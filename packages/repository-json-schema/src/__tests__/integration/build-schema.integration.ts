@@ -591,6 +591,45 @@ describe('build-schema', () => {
       });
     });
 
+    context('model conversion', () => {
+      @model()
+      class Category {
+        @property.array(() => Product)
+        products?: Product[];
+      }
+
+      @model()
+      class Product {
+        @property(() => Category)
+        category?: Category;
+      }
+
+      const expectedSchema = {
+        title: 'Category',
+        properties: {
+          products: {
+            type: 'array',
+            items: {$ref: '#/definitions/Product'},
+          },
+        },
+        definitions: {
+          Product: {
+            title: 'Product',
+            properties: {
+              category: {
+                $ref: '#/definitions/Category',
+              },
+            },
+          },
+        },
+      };
+
+      it('handles circular references', () => {
+        const schema = modelToJsonSchema(Category);
+        expect(schema).to.deepEqual(expectedSchema);
+      });
+    });
+
     function expectValidJsonSchema(schema: JsonSchema) {
       const ajv = new Ajv();
       const validate = ajv.compile(
@@ -639,6 +678,44 @@ describe('build-schema', () => {
         newProperty: {
           type: 'string',
         },
+      });
+    });
+    context('circular reference', () => {
+      @model()
+      class Category {
+        @property.array(() => Product)
+        products?: Product[];
+      }
+
+      @model()
+      class Product {
+        @property(() => Category)
+        category?: Category;
+      }
+
+      const expectedSchemaForCategory = {
+        title: 'Category',
+        properties: {
+          products: {
+            type: 'array',
+            items: {$ref: '#/definitions/Product'},
+          },
+        },
+        definitions: {
+          Product: {
+            title: 'Product',
+            properties: {
+              category: {
+                $ref: '#/definitions/Category',
+              },
+            },
+          },
+        },
+      };
+
+      it('generates the schema without running into infinite loop', () => {
+        const schema = getJsonSchema(Category);
+        expect(schema).to.deepEqual(expectedSchemaForCategory);
       });
     });
   });
