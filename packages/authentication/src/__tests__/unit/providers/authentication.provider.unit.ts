@@ -6,9 +6,9 @@
 import {Context, instantiateClass} from '@loopback/context';
 import {Request} from '@loopback/rest';
 import {expect} from '@loopback/testlab';
-import {Strategy} from 'passport';
 import {AuthenticateFn, AuthenticationBindings, UserProfile} from '../../..';
 import {AuthenticateActionProvider} from '../../../providers';
+import {AuthenticationStrategy} from '../../../types';
 import {MockStrategy} from '../fixtures/mock-strategy';
 
 describe('AuthenticateActionProvider', () => {
@@ -67,7 +67,9 @@ describe('AuthenticateActionProvider', () => {
 
       it('throws an error if the injected passport strategy is not valid', async () => {
         const context: Context = new Context();
-        context.bind(AuthenticationBindings.STRATEGY).to({} as Strategy);
+        context
+          .bind(AuthenticationBindings.STRATEGY)
+          .to({} as AuthenticationStrategy);
         context
           .bind(AuthenticationBindings.AUTH_ACTION)
           .toProvider(AuthenticateActionProvider);
