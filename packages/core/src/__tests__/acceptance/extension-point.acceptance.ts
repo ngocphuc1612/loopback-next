@@ -128,22 +128,23 @@ describe('extension point', () => {
       }
 
       class GreetingService {
-        @extensions('greeters')
-        public greeters: Getter<Greeter[]>;
-
-        @extensions('loggers')
-        public loggers: Getter<Greeter[]>;
+        constructor(
+          @extensions('greeters')
+          public greeters: Getter<Greeter[]>,
+          @extensions('loggers')
+          public loggers: Getter<Greeter[]>,
+        ) {}
       }
       ctx.bind('greeter-service').toClass(GreetingService);
       registerGreeters('greeters');
       addExtension(ctx, 'loggers', ConsoleLogger);
       const greeterService = await ctx.get<GreetingService>('greeter-service');
-      const greeters = await greeterService.greeters();
-      assertGreeterExtensions(greeters);
-      const loggers = await greeterService.loggers();
-      expect(loggers).to.be.an.Array();
-      expect(loggers.length).to.equal(1);
-      expect(loggers[0]).to.be.instanceOf(ConsoleLogger);
+      const loadedGreeters = await greeterService.greeters();
+      assertGreeterExtensions(loadedGreeters);
+      const loadedLoggers = await greeterService.loggers();
+      expect(loadedLoggers).to.be.an.Array();
+      expect(loadedLoggers.length).to.equal(1);
+      expect(loadedLoggers[0]).to.be.instanceOf(ConsoleLogger);
     });
 
     function givenContext() {

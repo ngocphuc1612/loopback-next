@@ -35,8 +35,7 @@ import {CoreTags} from './keys';
  * @param name Name of the extension point
  */
 export function extensionPoint(name: string, ...specs: BindingSpec[]) {
-  const tags = name ? {tags: {[CoreTags.EXTENSION_POINT]: name}} : {};
-  return bind(tags, ...specs);
+  return bind({tags: {[CoreTags.EXTENSION_POINT]: name}}, ...specs);
 }
 
 /**
@@ -65,13 +64,9 @@ export function extensionPoint(name: string, ...specs: BindingSpec[]) {
  */
 export function extensions(extensionPointName?: string) {
   return inject('', {decorator: '@extensions'}, (ctx, injection, session) => {
-    // Find the key of the target binding
-    const currentBinding = session.currentBinding;
-    if (!currentBinding) return undefined;
-
     extensionPointName =
       extensionPointName ||
-      inferExtensionPointName(currentBinding, injection.target);
+      inferExtensionPointName(injection.target, session.currentBinding);
 
     const bindingFilter = filterByTag({
       [CoreTags.EXTENSION_FOR]: extensionPointName,
@@ -82,18 +77,20 @@ export function extensions(extensionPointName?: string) {
 
 /**
  * Infer the extension point name from binding tags/class name
- * @param currentBinding Current binding
  * @param injectionTarget Target class or prototype
+ * @param currentBinding Current binding
  */
 function inferExtensionPointName(
-  currentBinding: Readonly<Binding<unknown>>,
   injectionTarget: object,
+  currentBinding?: Readonly<Binding<unknown>>,
 ) {
-  let name =
-    currentBinding.tagMap[CoreTags.EXTENSION_POINT] ||
-    currentBinding.tagMap[ContextTags.NAME];
+  if (currentBinding) {
+    let name =
+      currentBinding.tagMap[CoreTags.EXTENSION_POINT] ||
+      currentBinding.tagMap[ContextTags.NAME];
 
-  if (name) return name;
+    if (name) return name;
+  }
 
   let target: Function;
   if (typeof injectionTarget === 'function') {
