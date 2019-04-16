@@ -153,8 +153,9 @@ export function metaToJsonProperty(meta: PropertyDefinition): JSONSchema {
  */
 export function modelToJsonSchema(
   ctor: Function,
-  options: JsonSchemaOptions = {},
+  jsonSchemaOptions: JsonSchemaOptions = {},
 ): JSONSchema {
+  const options = {...jsonSchemaOptions};
   options.visited = options.visited || {};
 
   const meta: ModelDefinition | {} = ModelMetadataHelper.getModelMetadata(ctor);

@@ -680,6 +680,18 @@ describe('build-schema', () => {
         },
       });
     });
+    it('does not pollute the JSON schema options', () => {
+      @model()
+      class Category {
+        @property()
+        name: string;
+      }
+
+      const JSON_SCHEMA_OPTIONS = {};
+      // tslint:disable-next-line:no-unused
+      const categorySchema = getJsonSchema(Category, JSON_SCHEMA_OPTIONS);
+      expect(JSON_SCHEMA_OPTIONS).to.be.empty();
+    });
     context('circular reference', () => {
       @model()
       class Category {
