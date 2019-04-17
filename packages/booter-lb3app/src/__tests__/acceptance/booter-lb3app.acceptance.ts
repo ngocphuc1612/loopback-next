@@ -4,46 +4,28 @@
 // License text available at https://opensource.org/licenses/MIT
 
 import {Client, expect} from '@loopback/testlab';
-import {CoffeeApplication} from '../fixtures/src/application';
-import {CoffeeRepository} from '../fixtures/src/coffee.repository';
-import {givenCoffee, givenCoffeeShop, setupApplication} from '../test-helper';
+import {
+  CoffeeApplication,
+  givenCoffeeShop,
+  givenUser,
+  setupApplication,
+} from '../test-helper';
+const lb3app = require('../../../fixtures/legacy/server/server');
 
 describe('booter-lb3app', () => {
   let app: CoffeeApplication;
   let client: Client;
-  let coffeeRepo: CoffeeRepository;
 
   before(async () => {
-    ({app, client} = await setupApplication());
-    await changeDataSourceConfig();
-    await givenCoffeeRepository();
-  });
-
-  beforeEach(async () => {
-    await coffeeRepo.deleteAll();
+    ({app, client} = await setupApplication({
+      lb3app: {
+        path: '../fixtures/legacy/server/server',
+      },
+    }));
   });
 
   after('closes application', async () => {
-    await app.stop();
-  });
-
-  it('gets the LoopBack 4 explorer', async () => {
-    await client
-      .get('/explorer/')
-      .expect(200)
-      .expect('content-type', /html/)
-      .expect(/<title>LoopBack API Explorer/);
-  });
-
-  it('creates a LoopBack 4 Coffee instance', async () => {
-    const coffee = givenCoffee();
-    const response = await client
-      .post('/coffees')
-      .send(coffee)
-      .expect(200);
-    expect(response.body).to.containDeep(coffee);
-    const result = await coffeeRepo.findById(response.body.id);
-    expect(result).to.containDeep(coffee);
+    if (app) await app.stop();
   });
 
   context('mounting full LoopBack 3 application', () => {
@@ -53,21 +35,28 @@ describe('booter-lb3app', () => {
         .post('/api/CoffeeShops')
         .send(coffeeShop)
         .expect(200);
+
       expect(response.body).to.containDeep(coffeeShop.__data);
       const result = await client.get(`/api/CoffeeShops/${response.body.id}`);
       expect(result.body).to.containDeep(coffeeShop.__data);
     });
-  });
 
-  context('open API spec endpoints', () => {
-    it('includes LoopBack 4 endpoints in OpenApiSpec', () => {
-      const apiSpec = app.restServer.getApiSpec();
-      const paths = Object.keys(apiSpec.paths);
-      expect(paths).to.containDeep([
-        '/coffees',
-        '/coffees/count',
-        '/coffees/{id}',
-      ]);
+    it('gets route defined outside a model', async () => {
+      await client.get('/ping').expect(200, 'pong');
+    });
+
+    it('gets a simple LoopBack 3 route', async () => {
+      const currentDate = new Date();
+      const currentHour = currentDate.getHours();
+      const response = await client.get('/api/CoffeeShops/status').expect(200);
+
+      if (currentHour >= 6 && currentHour < 20) {
+        expect(response.body.status).to.eql('We are open for business.');
+      } else {
+        expect(response.body.status).to.eql(
+          'Sorry, we are closed. Open daily from 6am to 8pm.',
+        );
+      }
     });
 
     it('includes LoopBack 3 endpoints with `/api` base in OpenApiSpec', () => {
@@ -79,12 +68,55 @@ describe('booter-lb3app', () => {
         '/api/CoffeeShops/count',
       ]);
     });
+
+    context('LoopBack 3 authentication', () => {
+      before(async () => {
+        await givenUser();
+      });
+
+      it('allows user to make a request if they are authenticated', async () => {
+        const User = lb3app.models.User;
+
+        const token = await User.login({
+          email: 'sample@email.com',
+          password: 'L00pBack!',
+        });
+
+        const response = await client
+          .get(`/api/CoffeeShops/greet?access_token=${token.id}`)
+          .expect(200);
+
+        expect(response.body.undefined).to.eql('Hello from this Coffee Shop');
+
+        await User.logout(token.id);
+      });
+
+      it('does not allow user to make a request if they are not authenticated', async () => {
+        await client.get('/api/CoffeeShops/greet').expect(401);
+      });
+    });
+  });
+
+  context('mounting a simple LoopBack 3 application', () => {
+    before(async () => {
+      ({app, client} = await setupApplication({
+        lb3app: {path: '../fixtures/minimal-app'},
+      }));
+    });
+
+    it('gets a simple LoopBack 3 route', async () => {
+      await client.get('/hello').expect(200, 'hello');
+    });
   });
 
   context('mounting routes only of LoopBack 3 application', () => {
     before(async () => {
       ({app, client} = await setupApplication({
-        lb3app: {mode: 'restRouter', restApiRoot: '/coffees'},
+        lb3app: {
+          path: '../fixtures/legacy/server/server',
+          mode: 'restRouter',
+          restApiRoot: '/coffees',
+        },
       }));
     });
 
@@ -95,25 +127,15 @@ describe('booter-lb3app', () => {
         .send(coffeeShop)
         .expect(200);
       expect(response.body).to.containDeep(coffeeShop.__data);
+
       const result = await client.get(
         `/coffees/CoffeeShops/${response.body.id}`,
       );
       expect(result.body).to.containDeep(coffeeShop.__data);
     });
-  });
 
-  async function givenCoffeeRepository() {
-    coffeeRepo = await app.getRepository(CoffeeRepository);
-  }
-
-  async function changeDataSourceConfig() {
-    /**
-     * Override default config for DataSource for testing so we don't write
-     * test data to file when using the memory connector.
-     */
-    app.bind('datasources.config.ds').to({
-      name: 'ds',
-      connector: 'memory',
+    it('does not get route defined outside a model', async () => {
+      await client.get('/ping').expect(404);
     });
-  }
+  });
 });

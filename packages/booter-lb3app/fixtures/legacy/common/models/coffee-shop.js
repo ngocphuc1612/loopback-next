@@ -6,7 +6,7 @@ module.exports = function(CoffeeShop) {
     var currentHour = currentDate.getHours();
     var OPEN_HOUR = 6;
     var CLOSE_HOUR = 20;
-    console.log('Current hour is %d', currentHour);
+
     var response;
     if (currentHour >= OPEN_HOUR && currentHour < CLOSE_HOUR) {
       response = 'We are open for business.';
@@ -29,7 +29,6 @@ module.exports = function(CoffeeShop) {
     CoffeeShop.findById(shopId, function(err, instance) {
       var response = 'Name of coffee shop is ' + instance.name;
       cb(null, response);
-      console.log(response);
     });
   };
   CoffeeShop.remoteMethod('getName', {
@@ -41,5 +40,14 @@ module.exports = function(CoffeeShop) {
       http: {source: 'query'},
     },
     returns: {arg: 'name', type: 'string'},
+  });
+  CoffeeShop.greet = function(cb) {
+    process.nextTick(function() {
+      cb(null, 'Hello from this Coffee Shop');
+    });
+  };
+  CoffeeShop.remoteMethod('greet', {
+    http: {path: '/greet', verb: 'get'},
+    returns: {type: 'string'},
   });
 };

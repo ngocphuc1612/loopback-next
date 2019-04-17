@@ -3,15 +3,27 @@
 // This file is licensed under the MIT License.
 // License text available at https://opensource.org/licenses/MIT
 
-import {BootOptions} from '@loopback/boot/src';
+import {BootMixin, BootOptions} from '@loopback/boot';
+import {ApplicationConfig} from '@loopback/core';
+import {RepositoryMixin} from '@loopback/repository';
+import {RestApplication} from '@loopback/rest';
 import {
   Client,
   createRestAppClient,
   givenHttpServerConfig,
 } from '@loopback/testlab';
+import * as path from 'path';
 import {Lb3AppBooter} from '../lb3app.booter';
-import {CoffeeApplication} from './fixtures/src/application';
-import {Coffee} from './fixtures/src/coffee.model';
+const lb3app = require('../../fixtures/legacy/server/server');
+
+export class CoffeeApplication extends BootMixin(
+  RepositoryMixin(RestApplication),
+) {
+  constructor(options: ApplicationConfig = {}) {
+    super(options);
+    this.projectRoot = path.resolve(__dirname + '/..');
+  }
+}
 
 export async function setupApplication(
   booterOptions?: BootOptions,
@@ -19,7 +31,7 @@ export async function setupApplication(
   const app = new CoffeeApplication({rest: givenHttpServerConfig()});
 
   app.booters(Lb3AppBooter);
-  Object.assign(app.bootOptions, booterOptions);
+  app.bootOptions = Object.assign({}, booterOptions);
 
   await app.boot();
   await app.start();
@@ -36,24 +48,8 @@ export interface AppWithClient {
 
 /**
  * Generate a complete Coffee object for use with tests.
- * @param  A partial (or complete) Coffee object.
- */
-export function givenCoffee(coffee?: Partial<Coffee>) {
-  const data = Object.assign(
-    {
-      flavour: 'hazelnut',
-      size: 'small',
-    },
-    coffee,
-  );
-  return new Coffee(data);
-}
-
-/**
- * Generate a complete Coffee object for use with tests.
  */
 export function givenCoffeeShop() {
-  const lb3app = require('./fixtures/legacy/server/server');
   const CoffeeShop = lb3app.models.CoffeeShop;
 
   const data = {
@@ -62,4 +58,16 @@ export function givenCoffeeShop() {
   };
 
   return new CoffeeShop(data);
+}
+
+/**
+ * Generate a complete User object for use with tests.
+ */
+export async function givenUser() {
+  const User = lb3app.models.User;
+
+  return await User.create({
+    email: 'sample@email.com',
+    password: 'L00pBack!',
+  });
 }
