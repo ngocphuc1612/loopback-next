@@ -18,6 +18,11 @@ method invocations. There are many use cases for interceptors, such as:
 - Catch/transform errors, for example, normalize error objects
 - Override the method invocation, for example, return from cache
 
+The following diagram illustrates how interceptors can be applied to the
+invocation of a method on the controller class.
+
+![Interceptors](imgs/interceptors.png)
+
 ## Basic use
 
 ### Interceptors on controllers
